@@ -36,7 +36,7 @@ function activate_env {
 
 function test {
     echo "Running tests..."
-    pytest
+    pytest --cov=./src ./tests
     exit_on_error "Tests failed"
     echo "Tests passed!"
 }
