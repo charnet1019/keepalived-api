@@ -20,13 +20,16 @@ import ansible.module_utils.basic as ansible_basic
 
 
 class AnsibleInputMock:
-    def __init__(self, input_json: dict, file_path: str = None, path_exists=True):
+    def __init__(self, input_json: dict = {}, file_path: str = None, path_exists=True):
         if not isinstance(input_json, dict):
             raise TypeError("Invalid input_json type! Expected 'dict'")
 
-        self.input_json = {
-            "ANSIBLE_MODULE_ARGS": input_json,
-        }
+        if len(input_json) == 0:
+            self.input_json = ""
+        else:
+            self.input_json = json.dumps({
+                "ANSIBLE_MODULE_ARGS": input_json,
+            }, indent=None) + "\n"
 
         self.file_path = file_path
         self.path_exists = path_exists
@@ -43,7 +46,7 @@ class AnsibleInputMock:
     def __enter__(self):
         self.stdin_mock = TextIOWrapper(
             BufferedReader(
-                BytesIO((json.dumps(self.input_json, indent=None) + "\n").encode())
+                BytesIO(self.input_json.encode())
             ),
         )
         self.sys_argv_mock = (
@@ -70,7 +73,7 @@ class AnsibleModuleCheckMock(AnsibleModule):
 
 
 def test_noparams_run_module():
-    with pytest.raises(SystemExit) as exit_mock:
+    with AnsibleInputMock(), pytest.raises(SystemExit) as exit_mock:
         AnsibleKeepAlivedConfig().run_module()
     exit_mock.value.code == 1
 
