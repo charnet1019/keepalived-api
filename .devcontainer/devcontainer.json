@@ -1,0 +1,17 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/python
+{
+  "name": "devct-keepalived-config",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "extensions": [
+      "ms-python.python",
+      "ms-python.black-formatter",
+      "davidanson.vscode-markdownlint",
+      "github.vscode-github-actions"
+    ]
+  }
+}
