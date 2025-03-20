@@ -16,6 +16,7 @@ setup(
     name="keepalived-config",
     version=fread(os.path.join(ROOT_DIR, "VERSION")).strip(),
     long_description=fread(os.path.join(ROOT_DIR, "README.md")).strip(),
+    long_description_content_type="text/markdown",
     author="Nils Weyand",
     url="https://github.com/Slinred/keepalived-config",
     license=fread(os.path.join(ROOT_DIR, "LICENSE")).strip(),
