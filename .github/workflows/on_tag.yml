@@ -2,8 +2,9 @@ name: CI
 
 # Controls when the workflow will run
 on:
-  tag:
-    - "*"
+  push:
+    tags:
+      - '*'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
