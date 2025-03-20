@@ -20,14 +20,38 @@ class KeepAlivedConfigParser:
         self._block_nesting_level = 0
         self._comments: list[KeepAlivedConfigComment] = []
 
-    def parse(self, config_file, keep_empty_lines: bool = True) -> KeepAlivedConfig:
-        self._keep_empty_lines = keep_empty_lines
+    def parse_file(
+        self, config_file, keep_empty_lines: bool = True
+    ) -> KeepAlivedConfig:
         self._config = KeepAlivedConfig(config_file=config_file)
 
         with open(self._config.config_file, "r") as f:
-            contents = f.readlines()
+            contents = f.read()
 
-        self._parse_config_file_contents(contents)
+        return self.parse_string(contents, keep_empty_lines)
+
+    def parse_string(
+        self, config_string: str, keep_empty_lines: bool = True
+    ) -> KeepAlivedConfig:
+
+        if not isinstance(config_string, str):
+            raise TypeError(
+                f"Invalid config_string type '{type(config_string)}'! Expected 'str'"
+            )
+
+        if not config_string:
+            raise ValueError("Empty config_string provided!")
+
+        self._keep_empty_lines = keep_empty_lines
+        if not self._config:
+            self._config = KeepAlivedConfig()
+
+        self._parse_config_file_contents(config_string.split("\n"))
+
+        if self._block_nesting_level > 0:
+            raise SyntaxError(
+                f"Unexpected end of file! Missing '}}' at nesting level {self._block_nesting_level}"
+            )
 
         self._config.params.extend(self._items)
 

@@ -11,9 +11,7 @@ from keepalived_config.keepalived_config_comment import (
 
 class KeepAlivedConfig:
 
-    def __init__(
-        self, params: list = None, config_file=KeepAlivedConfigConstants.DEFAULT_PATH
-    ):
+    def __init__(self, params: list = None, config_file=None):
         self._config_file = None
         self._params: list[KeepAlivedConfigBlock | KeepAlivedConfigParam] = []
 

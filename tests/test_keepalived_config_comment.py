@@ -86,3 +86,19 @@ def test_from_str():
         == f"{KeepAlivedConfigConstants.get_indent(1)}{KeepAlivedConfigComment.COMMENT_INDICATOR} This is an inline comment"
     )
     assert inline_comment.type == KeepAlivedConfigCommentTypes.INLINE
+
+    with pytest.raises(ValueError):
+        KeepAlivedConfigComment.from_str("    shutdown_script_timeout SECONDS   #")
+        KeepAlivedConfigComment.from_str("    shutdown_script_timeout SECONDS   # ")
+        KeepAlivedConfigComment.from_str("#")
+
+
+def test_has_comment():
+    assert KeepAlivedConfigComment.has_comment("    # This is a comment")
+    assert KeepAlivedConfigComment.has_comment("    #")
+    assert KeepAlivedConfigComment.has_comment("#")
+    assert KeepAlivedConfigComment.has_comment("# ")
+    assert KeepAlivedConfigComment.has_comment("# This is a comment")
+    assert KeepAlivedConfigComment.has_comment("mykey    # This is a inline comment")
+    assert not KeepAlivedConfigComment.has_comment("This is not a comment")
+    assert not KeepAlivedConfigComment.has_comment("    This is not a comment")

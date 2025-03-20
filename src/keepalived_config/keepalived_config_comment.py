@@ -12,7 +12,7 @@ class KeepAlivedConfigCommentTypes(enum.Enum):
 class KeepAlivedConfigComment:
     COMMENT_INDICATOR = "#"
     COMMENT_REGEX = re.compile(
-        r"(^ *[#!] (?P<comment>.*$))|( +[#!] (?P<inline_comment>.*$))"
+        r"(^ *[#!](?P<comment>((.+)|())$))|( +[#!] (?P<inline_comment>.*$))"
     )
 
     @classmethod
@@ -32,7 +32,7 @@ class KeepAlivedConfigComment:
             )
 
         if match.group("comment"):
-            return cls(match.group("comment"))
+            return cls(match.group("comment").strip())
 
         raise ValueError(f"Invalid comment string '{comment_str}'")
 
