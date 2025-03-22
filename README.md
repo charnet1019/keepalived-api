@@ -9,7 +9,6 @@ Python API for configuration files for linux [keepalived package](https://www.ke
 - Save back the (modified) config to another (or the same) file
 - Comments in the config file are supported and can also be added via the python API
 - empty lines in the config file, can be kept and are represented as empty config parameters
-- ansible module that supports modification of parameters and also blocks in the configuration with full idempotency
 
 ## TODO
 

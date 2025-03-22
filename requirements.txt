@@ -3,5 +3,3 @@ pytest-cov
 
 twine
 build
-
-ansible-core

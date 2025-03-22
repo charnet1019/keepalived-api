@@ -4,4 +4,3 @@ from keepalived_config.keepalived_config_block import KeepAlivedConfigBlock
 from keepalived_config.keepalived_config_parser import KeepAlivedConfigParser
 from keepalived_config.keepalived_config import KeepAlivedConfig
 from keepalived_config.keepalived_config_comment import KeepAlivedConfigComment
-from keepalived_config.ansible_keepalived_config import AnsibleKeepAlivedConfig
