@@ -37,6 +37,9 @@ class AnsibleKeepAlivedConfig:
         if not isinstance(key, str):
             raise TypeError(f"Invalid type '{type(key)}' for key! Expected 'str'")
 
+        if not key:
+            return (config, None)
+
         for k in key.split("."):
             parent = config_item
             config_item = list(filter(lambda p: p.name == k, config_item.params))
@@ -49,7 +52,7 @@ class AnsibleKeepAlivedConfig:
         if config_item == config:
             raise KeyError(f"Key '{key}' not found in config!")
 
-        return config_item, parent
+        return (config_item, parent)
 
     def update_config_item(
         self,
@@ -99,6 +102,38 @@ class AnsibleKeepAlivedConfig:
         index = parent_item.params.index(item)
         parent_item.params[index] = new_config.params[0]
 
+    def create_config_item(
+        self,
+        config: KeepAlivedConfig,
+        key: str,
+        value: str,
+        with_key_prefix: bool = True,
+    ):
+        if not isinstance(config, KeepAlivedConfig):
+            raise TypeError(
+                f"Invalid type '{type(config)}' for config! Expected '{KeepAlivedConfig.__class__.__name__}'"
+            )
+
+        if not isinstance(key, str):
+            raise TypeError(f"Invalid type '{type(key)}' for key! Expected 'str'")
+
+        if not isinstance(value, str):
+            raise TypeError(f"Invalid type '{type(value)}' for value! Expected 'str'")
+
+        if not isinstance(with_key_prefix, bool):
+            raise TypeError(
+                f"Invalid type '{type(with_key_prefix)}' for with_key_prefix! Expected 'bool'"
+            )
+
+        # get the parent item by cutting off the last key
+        parent_item, _ = self.get_config_item(config, ".".join(key.split(".")[:-1]))
+
+        new_config: KeepAlivedConfig = KeepAlivedConfigParser().parse_string(
+            f"{key.split(".")[-1]} {value}" if with_key_prefix else value
+        )
+
+        parent_item.params.append(new_config.params[0])
+
     def run_module(self):
         # Define the argument/parameters that the module should accept
         module_args = dict(
@@ -122,6 +157,11 @@ class AnsibleKeepAlivedConfig:
                 default=True,
                 help="If true, the key will be prefixed to the value. If false, the value will be used as is.",
             ),
+            create=dict(
+                type="bool",
+                default=False,
+                help="If true, the key will be created if it does not exist in the config.",
+            ),
             state=dict(
                 type="str",
                 default=self.SUPPORTED_STATES[0],
@@ -129,9 +169,6 @@ class AnsibleKeepAlivedConfig:
                 help="The state of the key. If 'present', the key will be set to the given value. If 'absent', the key will be removed from the config.",
             ),
         )
-
-        # Seed the result dict in the object
-        self._result = dict(changed=False, message="")
 
         # Initialize the module
         self._module = AnsibleModule(
@@ -146,6 +183,7 @@ class AnsibleKeepAlivedConfig:
         value = self._module.params["value"]
         state = self._module.params["state"]
         with_key_prefix = self._module.params["with_key_prefix"]
+        create = self._module.params["create"]
 
         if not os.path.exists(file):
             self._module.fail_json(msg=f"File '{file}' not existing!")
@@ -153,7 +191,22 @@ class AnsibleKeepAlivedConfig:
         try:
             parser = KeepAlivedConfigParser()
             cur_config = parser.parse_file(file)
-            cur_item, parent_item = self.get_config_item(cur_config, key)
+            try:
+                cur_item, parent_item = self.get_config_item(cur_config, key)
+            except KeyError as e:
+                if not (
+                    create
+                    and any("not found in config!" in arg for arg in e.args)
+                    and state == "present"
+                ):
+                    raise e
+
+                self.create_config_item(cur_config, key, value, with_key_prefix)
+                self._persist_config(cur_config)
+                self._module.exit_json(
+                    changed=True, msg=f"Key '{key}' added to configuration!"
+                )
+
             cur_value = cur_item.value
 
             if value == cur_value:
@@ -162,18 +215,30 @@ class AnsibleKeepAlivedConfig:
             self.update_config_item(
                 parent_item, cur_item, value, state, with_key_prefix
             )
-            self._result["changed"] = True
 
-            if not self._module.check_mode:
-                cur_config.save(file)
+            self._persist_config(cur_config)
 
-            self._module.exit_json(**self._result)
+            self._module.exit_json(
+                changed=True, msg=f"Key '{key}' updated in configuration!"
+            )
 
         except Exception as e:
-            self._module.fail_json(msg=f"Exception occured: {traceback.format_exc()}")
+            self._module.fail_json(
+                msg=f"Exception occured: {', '.join(arg for arg in e.args)}",
+                exception=traceback.format_exc(),
+            )
 
         # Exit the module and return the result
         self._module.exit_json(**self._result)
+
+    def _persist_config(self, config: KeepAlivedConfig):
+        if not isinstance(config, KeepAlivedConfig):
+            raise TypeError(
+                f"Invalid type '{type(config)}' for config! Expected '{KeepAlivedConfig.__class__.__name__}'"
+            )
+
+        if not self._module.check_mode:
+            config.save()
 
 
 if __name__ == "__main__":

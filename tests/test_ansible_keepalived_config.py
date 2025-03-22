@@ -197,6 +197,58 @@ def test_valid_changed_run_module(open_mock, capsys):
         assert ansible_result["changed"] == True
 
 
+@mock.patch("builtins.open", new_callable=mock.mock_open, read_data="key value\n")
+def test_notexistingvaluenocreate_run_module(open_mock, capsys):
+    params = {
+        "key": "newkey",
+        "value": "new_value",
+        "file": "my_file",
+        "state": "present",
+        "create": False,
+    }
+
+    ansible_basic._ANSIBLE_ARGS = None
+
+    with AnsibleInputMock(params), pytest.raises(SystemExit) as exit_mock:
+        AnsibleKeepAlivedConfig().run_module()
+
+    exit_mock.value.code == 1
+    assert open_mock.call_args_list == [mock.call("my_file", "r")]
+    captured = capsys.readouterr()
+    ansible_result = json.loads(captured.out)
+    assert ansible_result["failed"] == True
+    assert "Key 'newkey' not found in config!" in ansible_result["msg"]
+
+
+@mock.patch("builtins.open", new_callable=mock.mock_open, read_data="key value\n")
+def test_valid_changed_created_run_module(open_mock, capsys):
+    params = {
+        "key": "newkey",
+        "value": "new_value",
+        "file": "my_file",
+        "state": "present",
+        "create": True,
+    }
+
+    ansible_basic._ANSIBLE_ARGS = None
+
+    with AnsibleInputMock(params), pytest.raises(SystemExit) as exit_mock:
+        AnsibleKeepAlivedConfig().run_module()
+
+    exit_mock.value.code == 0
+
+    captured = capsys.readouterr()
+    ansible_result = json.loads(captured.out)
+    assert open_mock.call_args_list == [
+        mock.call("my_file", "r"),
+        mock.call("my_file", "w"),
+    ]
+    assert ansible_result["changed"] == True
+
+    write_mock: mock.MagicMock = open_mock().write
+    write_mock.assert_called_with("newkey new_value\n")
+
+
 @mock.patch("os.path.exists", return_value=True)
 def test_invalid_get_config_item(os_path_exists_mock):
     invalid_items = [
@@ -383,3 +435,61 @@ def test_valid_absent_update_config_item():
         "absent",
     )
     assert len(config.params[0].params) == 0
+
+
+def test_invalid_create_config_item():
+    type_errors = [
+        (None, "param", "new_value", "present"),
+        (KeepAlivedConfig(), None, "new_value", "present"),
+        (KeepAlivedConfig(), "param", None, "present"),
+        (
+            KeepAlivedConfig(),
+            "param",
+            "new_value",
+            None,
+        ),
+    ]
+
+    def verify_error(error, *items):
+        with pytest.raises(error):
+            AnsibleKeepAlivedConfig().create_config_item(*items)
+
+    for items in type_errors:
+        verify_error(TypeError, *items)
+
+
+def test_valid_create_config_item():
+    config = KeepAlivedConfig()
+    config.set_params(
+        [
+            KeepAlivedConfigBlock("my_type", "myname"),
+            KeepAlivedConfigParam("param", "value"),
+        ]
+    )
+
+    AnsibleKeepAlivedConfig().create_config_item(config, "newkey", "new_value")
+    assert len(config.params) == 3
+    assert (
+        isinstance(config.params[2], KeepAlivedConfigParam)
+        and config.params[2].name == "newkey"
+        and config.params[2].value == "new_value"
+    )
+
+    # nested block with new block and nested param
+    AnsibleKeepAlivedConfig().create_config_item(
+        config,
+        "my_type myname.my_new_type my_new_name",
+        """{
+            mynestedparam mynestedvalue
+        }""",
+    )
+    assert len(config.params) == 3
+    assert len(config.params[0].params) == 1
+    assert len(config.params[0].params[0].params) == 1
+    assert (
+        isinstance(config.params[0].params[0], KeepAlivedConfigBlock)
+        and config.params[0].params[0].name == "my_new_type my_new_name"
+        and isinstance(config.params[0].params[0].params[0], KeepAlivedConfigParam)
+        and config.params[0].params[0].params[0].name == "mynestedparam"
+        and config.params[0].params[0].params[0].value == "mynestedvalue"
+    )
