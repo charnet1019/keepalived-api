@@ -27,9 +27,15 @@ class AnsibleInputMock:
         if len(input_json) == 0:
             self.input_json = ""
         else:
-            self.input_json = json.dumps({
-                "ANSIBLE_MODULE_ARGS": input_json,
-            }, indent=None) + "\n"
+            self.input_json = (
+                json.dumps(
+                    {
+                        "ANSIBLE_MODULE_ARGS": input_json,
+                    },
+                    indent=None,
+                )
+                + "\n"
+            )
 
         self.file_path = file_path
         self.path_exists = path_exists
@@ -45,9 +51,7 @@ class AnsibleInputMock:
 
     def __enter__(self):
         self.stdin_mock = TextIOWrapper(
-            BufferedReader(
-                BytesIO(self.input_json.encode())
-            ),
+            BufferedReader(BytesIO(self.input_json.encode())),
         )
         self.sys_argv_mock = (
             [self.file_path] if self.file_path else [os.path.basename(__file__)]
@@ -318,6 +322,7 @@ def test_valid_present_update_config_item():
     mychangedparam mychangedvalue
 }""",
         "present",
+        False,
     )
     assert (
         isinstance(config.params[0].params[0], KeepAlivedConfigBlock)
@@ -326,6 +331,28 @@ def test_valid_present_update_config_item():
         and config.params[0].params[0].params[0].name == "mychangedparam"
         and config.params[0].params[0].params[0].value == "mychangedvalue"
     )
+
+    config.set_params(
+        [
+            KeepAlivedConfigParam("my_name", "myoldvalue"),
+        ]
+    )
+    AnsibleKeepAlivedConfig().update_config_item(
+        config, config.params[0], "new value with spaces", "present"
+    )
+
+    assert config.params[0].value == "new value with spaces"
+    assert config.params[0].name == "my_name"
+
+    AnsibleKeepAlivedConfig().update_config_item(
+        config,
+        config.params[0],
+        "my_name really new value with spaces",
+        "present",
+        False,
+    )
+    assert config.params[0].value == "really new value with spaces"
+    assert config.params[0].name == "my_name"
 
 
 def test_valid_absent_update_config_item():

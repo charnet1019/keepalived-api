@@ -19,11 +19,14 @@ class KeepAlivedConfigParser:
         self._items: list[KeepAlivedConfigParam | KeepAlivedConfigBlock] = []
         self._block_nesting_level = 0
         self._comments: list[KeepAlivedConfigComment] = []
+        self._parse_source = None
 
     def parse_file(
         self, config_file, keep_empty_lines: bool = True
     ) -> KeepAlivedConfig:
         self._config = KeepAlivedConfig(config_file=config_file)
+
+        self._parse_source = self._config.config_file
 
         with open(self._config.config_file, "r") as f:
             contents = f.read()
@@ -45,6 +48,9 @@ class KeepAlivedConfigParser:
         self._keep_empty_lines = keep_empty_lines
         if not self._config:
             self._config = KeepAlivedConfig()
+
+        if not self._parse_source:
+            self._parse_source = "string"
 
         self._parse_config_file_contents(config_string.split("\n"))
 
@@ -82,7 +88,7 @@ class KeepAlivedConfigParser:
 
         if line.startswith("}") and self._block_nesting_level == 0:
             raise ValueError(
-                f"Unexpected '}}' found at nesting level 0! Reference: {self._config.config_file}@{line_nr}: '{line}'"
+                f"Unexpected '}}' found at nesting level 0! Reference: {self._parse_source}@{line_nr}: '{line}'"
             )
 
         if line.startswith("}") and self._block_nesting_level > 0:
@@ -107,7 +113,7 @@ class KeepAlivedConfigParser:
         valid_items = len(list(filter(None, items)))
         if valid_items < 1 or valid_items > 3:
             raise ValueError(
-                f"Unexpected line format in {self._config.config_file}@{line_nr}: '{line}'"
+                f"Unexpected line format in {self._parse_source}@{line_nr}: '{line}'"
             )
 
         key, value, block_type = items

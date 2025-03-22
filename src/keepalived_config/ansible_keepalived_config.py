@@ -57,6 +57,7 @@ class AnsibleKeepAlivedConfig:
         item: KeepAlivedConfigBlock | KeepAlivedConfigParam,
         new_value: str,
         state: str,
+        with_key_prefix: bool = True,
     ):
         if not isinstance(parent_item, (KeepAlivedConfig, KeepAlivedConfigBlock)):
             raise TypeError(
@@ -84,12 +85,9 @@ class AnsibleKeepAlivedConfig:
             parent_item.params.remove(item)
             return
 
-        new_config: KeepAlivedConfig = KeepAlivedConfigParser().parse_string(new_value)
-        new_item = new_config.params[0] if new_config.params else None
-        # if its a param and only teh value was provided, we need to set the current name
-        if type(new_item) == KeepAlivedConfigParam and not new_item.value:
-            new_item.value = new_item.name
-            new_item.name = item.name
+        new_config: KeepAlivedConfig = KeepAlivedConfigParser().parse_string(
+            f"{item.name} {new_value}" if with_key_prefix else new_value
+        )
 
         if isinstance(
             item, (KeepAlivedConfig, KeepAlivedConfigBlock)
@@ -117,7 +115,12 @@ class AnsibleKeepAlivedConfig:
             value=dict(
                 type="str",
                 default="",
-                help="The new value to set for the key, must be a valid config string (can also be a block without the key)",
+                help="The new value to set for the key, must be a valid config string (can also be a block without the key). The value will be prefixed with the key name if 'with_key_prefix' is true (default).",
+            ),
+            with_key_prefix=dict(
+                type="bool",
+                default=True,
+                help="If true, the key will be prefixed to the value. If false, the value will be used as is.",
             ),
             state=dict(
                 type="str",
@@ -142,6 +145,7 @@ class AnsibleKeepAlivedConfig:
         key = self._module.params["key"]
         value = self._module.params["value"]
         state = self._module.params["state"]
+        with_key_prefix = self._module.params["with_key_prefix"]
 
         if not os.path.exists(file):
             self._module.fail_json(msg=f"File '{file}' not existing!")
@@ -155,7 +159,9 @@ class AnsibleKeepAlivedConfig:
             if value == cur_value:
                 self._module.exit_json(changed=False)
 
-            self.update_config_item(parent_item, cur_item, value, state)
+            self.update_config_item(
+                parent_item, cur_item, value, state, with_key_prefix
+            )
             self._result["changed"] = True
 
             if not self._module.check_mode:
