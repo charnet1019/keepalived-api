@@ -7,6 +7,11 @@ from keepalived_config.keepalived_config import (
     KeepAlivedConfigBlock,
     KeepAlivedConfigComment,
 )
+from keepalived_config.keepalived_config_exceptions import (
+    ConfigParseError,
+    KeepAlivedConfigValueError,
+    KeepAlivedConfigTypeError
+)
 
 
 class KeepAlivedConfigParser:
@@ -21,29 +26,65 @@ class KeepAlivedConfigParser:
         self._comments: list[KeepAlivedConfigComment] = []
         self._parse_source = None
 
+    # 解析配置文件并返回KeepAlivedConfig对象
     def parse_file(
         self, config_file, keep_empty_lines: bool = True
     ) -> KeepAlivedConfig:
+        """
+        解析配置文件并返回KeepAlivedConfig对象
+        
+        Args:
+            config_file: 配置文件路径
+            keep_empty_lines: 是否保留空行
+            
+        Returns:
+            KeepAlivedConfig: 解析后的配置对象
+            
+        Raises:
+            ConfigParseError: 当配置文件解析失败时
+            FileNotFoundError: 当配置文件不存在时
+        """
         self._config = KeepAlivedConfig(config_file=config_file)
 
         self._parse_source = self._config.config_file
 
-        with open(self._config.config_file, "r") as f:
-            contents = f.read()
+        try:
+            with open(self._config.config_file, "r") as f:
+                contents = f.read()
+        except FileNotFoundError:
+            raise
+        except Exception as e:
+            raise ConfigParseError(f"无法读取配置文件 '{config_file}': {str(e)}") from e
 
         return self.parse_string(contents, keep_empty_lines)
 
+    # 解析配置字符串并返回KeepAlivedConfig对象
     def parse_string(
         self, config_string: str, keep_empty_lines: bool = True
     ) -> KeepAlivedConfig:
+        """
+        解析配置字符串并返回KeepAlivedConfig对象
+        
+        Args:
+            config_string (str): 配置字符串
+            keep_empty_lines (bool): 是否保留空行
+            
+        Returns:
+            KeepAlivedConfig: 解析后的配置对象
+            
+        Raises:
+            KeepAlivedConfigTypeError: 当配置字符串类型错误时
+            KeepAlivedConfigValueError: 当配置字符串为空时
+            ConfigParseError: 当配置字符串解析失败时
+        """
 
         if not isinstance(config_string, str):
-            raise TypeError(
+            raise KeepAlivedConfigTypeError(
                 f"Invalid config_string type '{type(config_string)}'! Expected 'str'"
             )
 
         if not config_string:
-            raise ValueError("Empty config_string provided!")
+            raise KeepAlivedConfigValueError("Empty config_string provided!")
 
         self._keep_empty_lines = keep_empty_lines
         if not self._config:
@@ -55,7 +96,7 @@ class KeepAlivedConfigParser:
         self._parse_config_file_contents(config_string.split("\n"))
 
         if self._block_nesting_level > 0:
-            raise SyntaxError(
+            raise ConfigParseError(
                 f"Unexpected end of file! Missing '}}' at nesting level {self._block_nesting_level}"
             )
 
@@ -63,12 +104,14 @@ class KeepAlivedConfigParser:
 
         return self._config
 
+    # 解析配置文件内容行列表
     def _parse_config_file_contents(self, file_contents: list) -> list:
         self._items = []
 
         for line_nr, line in enumerate(file_contents, 1):
             self._parse_config_file_line(line.strip(), line_nr)
 
+    # 解析单行配置内容
     def _parse_config_file_line(self, line: str, line_nr: int):
         active_block = self._get_active_block(self._items, self._block_nesting_level)
 
@@ -141,6 +184,7 @@ class KeepAlivedConfigParser:
         else:
             self._items.append(config_param)
 
+    # 获取指定嵌套级别的活动配置块
     def _get_active_block(self, config: list, nesting_level: int):
         if not isinstance(config, list):
             raise TypeError(f"Invalid config type '{type(config)}'! Expected 'list'")

@@ -5,12 +5,10 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "debugpy.debugJustMyCode": false,
-
     "editor.renderWhitespace": "all",
     "editor.tabSize": 4,
     "editor.insertSpaces": true,
     "editor.formatOnSave": true,
-
     "terminal.integrated.profiles.linux": {
         "bash": {
             "path": "bash",
@@ -35,5 +33,5 @@
             "source": "Git Bash"
         }
     },
-    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
 }

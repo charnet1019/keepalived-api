@@ -48,6 +48,7 @@ class KeepAlivedConfigParam:
     def comments(self):
         return self._comments
 
+    # 添加单个注释，验证注释类型并防止重复的行内注释
     def add_comment(self, comment: KeepAlivedConfigComment):
         if not isinstance(comment, KeepAlivedConfigComment):
             raise TypeError(
@@ -68,6 +69,7 @@ class KeepAlivedConfigParam:
 
         self._comments.append(comment)
 
+    # 添加多个注释
     def add_comments(self, comments: list):
         if not isinstance(comments, list):
             raise TypeError(
@@ -76,6 +78,7 @@ class KeepAlivedConfigParam:
         for comment in comments:
             self.add_comment(comment)
 
+    # 将参数转换为字符串格式，包含注释和适当的缩进
     def to_str(self, indent_level=0):
         Str = ""
         if self.__get_generic_comments__():

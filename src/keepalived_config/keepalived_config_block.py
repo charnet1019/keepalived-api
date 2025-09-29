@@ -21,6 +21,7 @@ class KeepAlivedConfigBlock(KeepAlivedConfigParam):
     def params(self):
         return self._params
 
+    # 向配置块中添加参数或子块
     def add_param(self, param):
         if not isinstance(param, KeepAlivedConfigParam):
             raise TypeError(
@@ -28,6 +29,7 @@ class KeepAlivedConfigBlock(KeepAlivedConfigParam):
             )
         self._params.append(param)
 
+    # 将配置块转换为字符串格式，包含所有子参数和适当的缩进
     def to_str(self, indent_level=0):
         Str = f"{super().to_str(indent_level)} {{" + "\n"
         if self._params:
